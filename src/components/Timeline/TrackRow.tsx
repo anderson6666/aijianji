@@ -27,6 +27,7 @@ function TrackRow({ track, height, pixelsPerSecond, totalDuration }: TrackRowPro
   const updateClip = useProjectStore((s) => s.updateClip)
   const moveClip = useProjectStore((s) => s.moveClip)
   const removeClip = useProjectStore((s) => s.removeClip)
+  const splitClip = useProjectStore((s) => s.splitClip)
 
   return (
     <div
@@ -92,6 +93,7 @@ function TrackRow({ track, height, pixelsPerSecond, totalDuration }: TrackRowPro
               moveClip(clip.id, newTrackId, newStartTime)
             }
             onDelete={() => removeClip(clip.id)}
+            onSplit={(splitTime) => splitClip(clip.id, splitTime)}
           />
         ))}
 

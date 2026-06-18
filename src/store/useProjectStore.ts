@@ -77,6 +77,7 @@ interface ProjectState {
   removeClip: (clipId: string) => void
   updateClip: (clipId: string, updates: Partial<Clip>) => void
   moveClip: (clipId: string, newTrackId: string, newStartTime: number) => void
+  splitClip: (clipId: string, splitTime: number) => void
 
   // 效果操作
   addEffectToClip: (clipId: string, effect: Omit<AppliedEffect, 'id'>) => string
@@ -326,6 +327,84 @@ const useProjectStore = create<ProjectState>((set, get) => ({
       return { project: { ...state.project, tracks: newTracks } }
     })
 
+    get().recalculateDuration()
+  },
+
+  splitClip: (clipId, splitTime) => {
+    set((state) => {
+      // 找到要分割的片段
+      let targetClip: Clip | null = null
+      let targetTrackId: string | null = null
+
+      for (const track of state.project.tracks) {
+        const clip = track.clips.find((c) => c.id === clipId)
+        if (clip) {
+          targetClip = clip
+          targetTrackId = track.id
+          break
+        }
+      }
+
+      if (!targetClip || !targetTrackId) return state
+
+      // 计算分割点相对于片段开始的时间
+      const relativeSplitTime = splitTime - targetClip.startTime
+
+      // 确保分割点在片段范围内
+      if (relativeSplitTime <= 0 || relativeSplitTime >= targetClip.duration) {
+        return state
+      }
+
+      // 创建两个新片段
+      const clip1: Clip = {
+        ...targetClip,
+        id: generateId(),
+        duration: relativeSplitTime,
+        effects: targetClip.effects.filter(
+          (e) => e.startTime < relativeSplitTime
+        ).map((e) => ({
+          ...e,
+          duration: Math.min(e.duration, relativeSplitTime - e.startTime),
+        })),
+      }
+
+      const clip2: Clip = {
+        ...targetClip,
+        id: generateId(),
+        startTime: splitTime,
+        duration: targetClip.duration - relativeSplitTime,
+        effects: targetClip.effects.filter(
+          (e) => e.startTime + e.duration > relativeSplitTime
+        ).map((e) => ({
+          ...e,
+          startTime: Math.max(0, e.startTime - relativeSplitTime),
+          duration: Math.min(
+            e.duration,
+            e.startTime + e.duration - relativeSplitTime
+          ),
+        })),
+      }
+
+      // 更新轨道，移除原片段，添加两个新片段
+      return {
+        project: {
+          ...state.project,
+          tracks: state.project.tracks.map((t) =>
+            t.id === targetTrackId
+              ? {
+                  ...t,
+                  clips: t.clips
+                    .filter((c) => c.id !== clipId)
+                    .concat([clip1, clip2]),
+                }
+              : t
+          ),
+        },
+        selectedClipId: clip1.id,
+      }
+    })
+
+    get().pushHistory()
     get().recalculateDuration()
   },
 
