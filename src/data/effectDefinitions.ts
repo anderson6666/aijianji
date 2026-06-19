@@ -1558,10 +1558,10 @@ export const effectDefinitions: EffectDefinition[] = [
   },
   {
     id: 'slowMotion',
-    name: '慢速',
+    name: '减速(慢动作)',
     category: 'visual',
     categoryName: '画面特效',
-    icon: 'Timer',
+    icon: 'Snail',
     description: '降低播放速度，营造戏剧性慢动作效果，适合强调关键动作细节',
     defaultParams: { duration: 2000, rate: 0.5 },
     paramDefs: [
@@ -1585,10 +1585,10 @@ export const effectDefinitions: EffectDefinition[] = [
   },
   {
     id: 'fastMotion',
-    name: '快速',
+    name: '加速(快进)',
     category: 'visual',
     categoryName: '画面特效',
-    icon: 'Zap',
+    icon: 'FastForward',
     description: '提高播放速度，营造快节奏或时间流逝感，适合蒙太奇和过渡场景',
     defaultParams: { duration: 2000, rate: 2.0 },
     paramDefs: [

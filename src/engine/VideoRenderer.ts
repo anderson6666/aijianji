@@ -920,10 +920,10 @@ export class VideoRenderer {
   /**
    * 根据速度因子计算媒体时间
    * @param time 时间轴时间（秒）
-   * @param rate 播放速率（0.1~8.0）
+   * @param rate 播放速率（<1=慢速/减速，>1=快速/加速，如0.5x半速、2.0x二倍速）
    */
   private computeMediaTime(time: number, rate: number): number {
-    return time / Math.max(0.01, rate);
+    return time * Math.max(0.01, rate);
   }
 
   /**
