@@ -1,5 +1,4 @@
-import React, { useMemo } from 'react'
-import useTimelineStore from '@/store/useTimelineStore'
+import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 
 interface TimelineRulerProps {
   width: number
@@ -18,6 +17,31 @@ function TimelineRuler({
   scrollLeft,
   onClick,
 }: TimelineRulerProps) {
+  // 测量实际容器可视宽度（而非 window.innerWidth）
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(1000)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    // 初始测量：取父级滚动容器的可视宽度
+    const updateWidth = () => {
+      const parent = el.parentElement?.parentElement // scrollContainerRef 对应的 div
+      if (parent) {
+        setContainerWidth(parent.clientWidth)
+      }
+    }
+    updateWidth()
+
+    // 监听窗口大小变化和容器变化
+    const observer = new ResizeObserver(updateWidth)
+    const scrollParent = el.parentElement?.parentElement
+    if (scrollParent) observer.observe(scrollParent)
+
+    return () => observer.disconnect()
+  }, [])
+
   // 根据缩放级别动态计算刻度间隔
   const ticks = useMemo(() => {
     const result: { time: number; isMajor: boolean; label?: string }[] = []
@@ -65,22 +89,27 @@ function TimelineRuler({
     return `${seconds}s`
   }
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left + scrollLeft
     const time = x / pixelsPerSecond
     onClick(Math.max(0, time))
-  }
+  }, [scrollLeft, pixelsPerSecond, onClick])
+
+  // 裁剪阈值：使用实际容器宽度 + 缓冲区（标签文字约需 40px 额外空间）
+  const visibleRight = containerWidth + 50
 
   return (
     <div
-      className="timeline-ruler absolute left-0 right-0 top-0 z-10 cursor-pointer"
+      ref={containerRef}
+      className="timeline-ruler absolute left-0 top-0 z-10 cursor-pointer"
       style={{ height, width }}
       onClick={handleClick}
     >
       {ticks.map((tick, index) => {
         const x = tick.time * pixelsPerSecond - scrollLeft
-        if (x < -20 || x > window.innerWidth + 100) return null
+        // 使用实际容器宽度裁剪，修复长视频滚动后刻度被错误隐藏的问题
+        if (x < -20 || x > visibleRight) return null
 
         return (
           <React.Fragment key={index}>
