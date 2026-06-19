@@ -636,79 +636,6 @@ visualEffects.set('reversePlay', (
 });
 
 /**
- * 8. chromaKey - 绿幕/蓝幕抠像合成
- * 使用 chroma key 算法抠除指定颜色背景
- * 基于 HSL 色彩空间的颜色距离判断
- */
-visualEffects.set('chromaKey', (
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  params?: Record<string, any>
-) => {
-  const targetColorStr = param(params, 'targetColor', '#00FF00');
-  const threshold = param(params, 'threshold', 40, 1, 100);
-  const edgeSoftness = param(params, 'edgeSoftness', 2, 0, 20);
-  const bgColor = param(params, 'bgColor', '#000000');
-
-  const width = canvas.width;
-  const height = canvas.height;
-
-  // 解析目标颜色
-  const targetRgb = hexToRgb(targetColorStr);
-  const targetHsl = rgbToHsl(targetRgb.r, targetRgb.g, targetRgb.b);
-
-  // 获取像素数据
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const data = imageData.data;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-
-    const pixelHsl = rgbToHsl(r, g, b);
-
-    // 计算 HSL 色彩空间中的距离
-    let hueDiff = Math.abs(pixelHsl.h - targetHsl.h);
-    if (hueDiff > 180) hueDiff = 360 - hueDiff;
-
-    const satDiff = Math.abs(pixelHsl.s - targetHsl.s);
-    const lightDiff = Math.abs(pixelHsl.l - targetHsl.l);
-
-    // 加权色彩距离
-    const colorDistance = Math.sqrt(
-      hueDiff * hueDiff * 2 +
-      satDiff * satDiff * 1.5 +
-      lightDiff * lightDiff
-    );
-
-    // 判断是否为目标色附近
-    if (colorDistance < threshold) {
-      // 根据距离计算透明度（边缘柔化）
-      let alpha = colorDistance / threshold;
-      if (edgeSoftness > 0 && colorDistance > threshold - edgeSoftness) {
-        alpha = Math.min(1, alpha + (colorDistance - (threshold - edgeSoftness)) / edgeSoftness);
-      }
-
-      // 完全匹配时设为透明
-      if (alpha < 0.05) {
-        data[i + 3] = 0;
-      } else {
-        // 半透明过渡
-        data[i + 3] = Math.floor(data[i + 3] * alpha);
-      }
-    }
-  }
-
-  // 绘制背景色
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, width, height);
-
-  // 叠加处理后的图像（带透明通道）
-  ctx.putImageData(imageData, 0, 0);
-});
-
-/**
  * 9. maskCrop - 蒙版裁切效果
  * 使用自定义形状（圆形/矩形/星形/心形）裁剪画面
  * 支持羽化边缘和反转遮罩
@@ -1092,6 +1019,6 @@ export function applyVisualEffect(
 /** 所有可用的画面特效名称列表 */
 export const visualEffectNames: string[] = [
   'splitScreen', 'pictureInPicture', 'mirrorFlip', 'rotate',
-  'zoomPan', 'freezeFrame', 'reversePlay', 'chromaKey',
+  'zoomPan', 'freezeFrame', 'reversePlay',
   'maskCrop', 'montageStitch'
 ];

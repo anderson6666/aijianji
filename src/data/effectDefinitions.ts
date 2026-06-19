@@ -503,38 +503,6 @@ export const effectDefinitions: EffectDefinition[] = [
     ],
   },
   {
-    id: 'chromaKey',
-    name: '绿幕抠像',
-    category: 'visual',
-    categoryName: '画面特效',
-    icon: 'Droplet',
-    description: '移除指定颜色背景（通常为绿色），用于合成场景',
-    defaultParams: { targetColor: '#00FF00', threshold: 40, edgeSoftness: 2 },
-    paramDefs: [
-      {
-        key: 'targetColor',
-        label: '目标颜色',
-        type: 'color',
-      },
-      {
-        key: 'threshold',
-        label: '容差阈值',
-        type: 'slider',
-        min: 1,
-        max: 100,
-        step: 1,
-      },
-      {
-        key: 'edgeSoftness',
-        label: '边缘柔化',
-        type: 'slider',
-        min: 0,
-        max: 20,
-        step: 1,
-      },
-    ],
-  },
-  {
     id: 'maskCrop',
     name: '遮罩裁剪',
     category: 'visual',

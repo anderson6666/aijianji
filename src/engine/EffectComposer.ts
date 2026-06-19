@@ -16,7 +16,7 @@ type InternalEffectType =
   | 'colorOverlay'
   | 'chromaticAberration'   // 色差/色散
   | 'glitch'                 // 故障艺术
-  | 'chromaKey';             // 绿幕抠像
+  ;
 
 /**
  * 特效合成器 - 按顺序应用各种图像效果
@@ -297,42 +297,6 @@ export class EffectComposer {
             const bx = Math.max(0, x - rgbSplit);
             data.data[i] = copy[(y * width + rx) * 4];       // R 右移
             data.data[i + 2] = copy[(y * width + bx) * 4 + 2]; // B 左移
-          }
-        }
-      }
-
-      return data;
-    });
-
-    // 绿幕抠像 - 移除指定颜色背景使其透明（注意：Canvas2D不支持真正透明合成，此处改为替换为指定颜色或保留）
-    this.effectProcessors.set('chromaKey', (data, params) => {
-      // 默认目标颜色为绿色 #00FF00
-      const targetColor: string = String(params.targetColor ?? '#00FF00');
-      const threshold = params.threshold ?? 40;
-      const edgeSoftness = params.edgeSoftness ?? 2;
-      const targetRgb = this.hexToRgb(targetColor);
-      const { width, height } = data;
-
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const i = (y * width + x) * 4;
-          const r = data.data[i];
-          const g = data.data[i + 1];
-          const b = data.data[i + 2];
-
-          // 计算与目标颜色的距离
-          const dr = r - targetRgb.r;
-          const dg = g - targetRgb.g;
-          const db = b - targetRgb.b;
-          const distance = Math.sqrt(dr * dr + dg * dg + db * db);
-
-          if (distance < threshold) {
-            // 在阈值范围内 → 将像素变暗/接近黑色来模拟"移除"
-            // （真正的透明需要 WebGL 或离屏 canvas 合成）
-            const alpha = Math.min(1, distance / Math.max(threshold / 2, 1));
-            data.data[i] = Math.floor(r * alpha * 0.3);
-            data.data[i + 1] = Math.floor(g * alpha * 0.3);
-            data.data[i + 2] = Math.floor(b * alpha * 0.3);
           }
         }
       }

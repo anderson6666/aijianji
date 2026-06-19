@@ -57,7 +57,7 @@ export class VideoRenderer {
   // 画面特效（通过 visual.ts 的 VisualEffectProcessor 处理，操作 ctx+canvas）
   private static readonly VISUAL_EFFECTS = new Set([
     'splitScreen', 'pictureInPicture', 'mirrorFlip', 'rotate',
-    'zoomPan', 'freezeFrame', 'chromaKey',
+    'zoomPan', 'freezeFrame',
     'maskCrop', 'slowMotion', 'fastMotion',
   ]);
 
@@ -83,7 +83,6 @@ export class VideoRenderer {
     grainNoise: 'noise',
     chromaticAberration: 'chromaticAberration',
     glitch: 'glitch',
-    chromaKey: 'chromaKey',
   };
 
   constructor(canvas: HTMLCanvasElement) {
@@ -902,12 +901,6 @@ export class VideoRenderer {
         // 故障艺术：定义中 intensity(0-1), rgbSplit(px), scanlines(bool), noiseAmount(0-1)
         numericParams.intensity = ((originalParams.intensity as number) ?? 0.6) * 100;
         numericParams.rgbSplit = (originalParams.rgbSplit as number) ?? 8;
-        break;
-      }
-      case 'chromaKey': {
-        // 绿幕抠像：定义中 targetColor(#hex), threshold(0-100), edgeSoftness(0-20)
-        numericParams.threshold = (originalParams.threshold as number) ?? 40;
-        numericParams.edgeSoftness = (originalParams.edgeSoftness as number) ?? 2;
         break;
       }
       case 'invert': {
