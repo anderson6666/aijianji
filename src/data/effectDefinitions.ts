@@ -1556,6 +1556,60 @@ export const effectDefinitions: EffectDefinition[] = [
       },
     ],
   },
+  {
+    id: 'slowMotion',
+    name: '慢速',
+    category: 'visual',
+    categoryName: '画面特效',
+    icon: 'Timer',
+    description: '降低播放速度，营造戏剧性慢动作效果，适合强调关键动作细节',
+    defaultParams: { duration: 2000, rate: 0.5 },
+    paramDefs: [
+      {
+        key: 'duration',
+        label: '效果时长(ms)',
+        type: 'slider',
+        min: 200,
+        max: 10000,
+        step: 100,
+      },
+      {
+        key: 'rate',
+        label: '速率',
+        type: 'slider',
+        min: 0.1,
+        max: 0.9,
+        step: 0.05,
+      },
+    ],
+  },
+  {
+    id: 'fastMotion',
+    name: '快速',
+    category: 'visual',
+    categoryName: '画面特效',
+    icon: 'Zap',
+    description: '提高播放速度，营造快节奏或时间流逝感，适合蒙太奇和过渡场景',
+    defaultParams: { duration: 2000, rate: 2.0 },
+    paramDefs: [
+      {
+        key: 'duration',
+        label: '效果时长(ms)',
+        type: 'slider',
+        min: 200,
+        max: 10000,
+        step: 100,
+      },
+      {
+        key: 'rate',
+        label: '速率',
+        type: 'slider',
+        min: 1.1,
+        max: 8.0,
+        step: 0.1,
+      },
+    ],
+  },
 ]
 
 // 按分类分组

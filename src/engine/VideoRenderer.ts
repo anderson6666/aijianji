@@ -70,6 +70,11 @@ export class VideoRenderer {
     'glitch', 'filmSimulation', 'frameSkip', 'textureOverlay', 'textCardTransition',
   ]);
 
+  // 速度效果（影响视频播放速率，在 renderLayer 时间映射阶段处理）
+  private static readonly SPEED_EFFECTS = new Set([
+    'slowMotion', 'fastMotion',
+  ]);
+
   // EffectComposer 内部类型映射（用于像素级处理的效果）
   private static readonly EFFECT_COMPOSER_MAP: Record<string, string> = {
     monochrome: 'grayscale',
@@ -437,9 +442,21 @@ export class VideoRenderer {
     const transitionEffects = activeEffects.filter(e =>
       VideoRenderer.TRANSITION_EFFECTS.has(e.type)
     );
-    const imageEffects = activeEffects.filter(e =>
-      !VideoRenderer.TRANSITION_EFFECTS.has(e.type)
+    // 分离速度效果（影响视频时间映射，不参与像素处理）
+    const speedEffects = activeEffects.filter(e =>
+      VideoRenderer.SPEED_EFFECTS.has(e.type)
     );
+    const imageEffects = activeEffects.filter(e =>
+      !VideoRenderer.TRANSITION_EFFECTS.has(e.type) &&
+      !VideoRenderer.SPEED_EFFECTS.has(e.type)
+    );
+
+    // 计算当前激活的速度因子（取最后一个匹配速度效果的速率）
+    let speedFactor = 1.0;
+    if (speedEffects.length > 0) {
+      const lastSpeedEffect = speedEffects[speedEffects.length - 1];
+      speedFactor = (lastSpeedEffect.params.rate as number) ?? 1.0;
+    }
 
     // 通过 computeTransitionState 统一计算所有12种转场的状态
     const { opacityMultiplier, flashOverlay, clipPath } = this.computeTransitionState(transitionEffects, relativeTime);
@@ -484,7 +501,7 @@ export class VideoRenderer {
 
     switch (source.type) {
       case 'video':
-        this.renderVideoSource(source.url, relativeTime);
+        this.renderVideoSource(source.url, relativeTime, speedFactor);
         break;
       case 'image':
         this.renderImageSource(source.url);
@@ -791,6 +808,8 @@ export class VideoRenderer {
         } else if (NARRATIVE_EFFECTS.has(effect.type)) {
           // 叙事效果 → 由时间轴编排引擎处理
           console.log(`[VideoRenderer] 叙事效果 "${effect.type}" 已在时间轴编排引擎中处理`);
+        } else if (VideoRenderer.SPEED_EFFECTS.has(effect.type)) {
+          // 速度效果 → 已在 renderLayer 时间映射阶段处理
         } else {
           console.warn(`[VideoRenderer] 效果类型 "${effect.type}" 暂无对应的渲染处理器，已跳过`);
         }
@@ -870,17 +889,23 @@ export class VideoRenderer {
 
   /**
    * 渲染视频源
+   * @param speedFactor 速度因子，1.0=正常，<1=慢速，>1=快速
    */
-  private renderVideoSource(url: string, time: number): void {
+  private renderVideoSource(url: string, time: number, speedFactor: number = 1.0): void {
     const source = this.videoSources.get(url);
     if (!source || !source.ready) return;
 
     const video = source.element;
     if (video.readyState < 2) return; // 双重检查
 
+    // 根据速度因子计算实际视频时间
+    const mediaTime = speedFactor !== 1.0
+      ? this.computeMediaTime(time, speedFactor)
+      : time;
+
     // 设置当前时间
-    if (Math.abs(video.currentTime - time) > 0.05) {
-      video.currentTime = time;
+    if (Math.abs(video.currentTime - mediaTime) > 0.05) {
+      video.currentTime = Math.max(0, mediaTime);
     }
 
     const drawWidth = this.canvas.width;
@@ -888,6 +913,15 @@ export class VideoRenderer {
 
     // 保持宽高比绘制
     this.drawAspectFit(video, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+  }
+
+  /**
+   * 根据速度因子计算媒体时间
+   * @param time 时间轴时间（秒）
+   * @param rate 播放速率（0.1~8.0）
+   */
+  private computeMediaTime(time: number, rate: number): number {
+    return time / Math.max(0.01, rate);
   }
 
   /**

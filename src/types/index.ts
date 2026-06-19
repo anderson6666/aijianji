@@ -14,7 +14,7 @@ export type EffectType =
   | 'jumpCut'
   | 'emptyShot'
   | 'flashbackTransition'
-  // 画面特效类 (10种)
+  // 画面特效类 (12种)
   | 'splitScreen'
   | 'pictureInPicture'
   | 'mirrorFlip'
@@ -25,6 +25,8 @@ export type EffectType =
   | 'chromaKey'
   | 'maskCrop'
   | 'montageStitch'
+  | 'slowMotion'
+  | 'fastMotion'
   // 色彩光影类 (5种)
   | 'colorGrade'
   | 'monochrome'
