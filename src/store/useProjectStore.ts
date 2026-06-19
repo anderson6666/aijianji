@@ -473,7 +473,9 @@ const useProjectStore = create<ProjectState>((set, get) => ({
 
   selectEffect: (effectId) => set({ selectedEffectId: effectId }),
 
-  setCurrentTime: (time) => set({ currentTime: Math.max(0, time) }),
+  setCurrentTime: (time) => set((state) => ({
+    currentTime: Math.max(0, Math.min(time, Math.max(state.project.duration, 0))),
+  })),
 
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
 
