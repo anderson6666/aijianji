@@ -1,12 +1,5 @@
-import React, { useCallback, useRef, useEffect, useState } from 'react'
-import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  Plus,
-  Magnet,
-  Sparkles,
-} from 'lucide-react'
+import React, { useCallback, useRef, useState } from 'react'
+import { ZoomIn, ZoomOut, Maximize2, Plus, Magnet, Sparkles } from 'lucide-react'
 import useProjectStore from '@/store/useProjectStore'
 import useTimelineStore from '@/store/useTimelineStore'
 import type { Material } from '@/types'
@@ -17,15 +10,12 @@ import Playhead from './Playhead'
 import Tooltip from '@/components/Common/Tooltip'
 
 function Timeline() {
-  const tracksAreaRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
-  const [dropPosition, setDropPosition] = useState<{ trackId: string; time: number } | null>(null)
 
   // Store 数据
   const project = useProjectStore((s) => s.project)
   const currentTime = useProjectStore((s) => s.currentTime)
-  const setCurrentTime = useProjectStore((s) => s.setCurrentTime)
   const addTrack = useProjectStore((s) => s.addTrack)
   const selectClip = useProjectStore((s) => s.selectClip)
   const addClip = useProjectStore((s) => s.addClip)
@@ -35,14 +25,12 @@ function Timeline() {
   const trackHeight = useTimelineStore((s) => s.trackHeight)
   const rulerHeight = useTimelineStore((s) => s.rulerHeight)
   const scrollLeft = useTimelineStore((s) => s.scrollLeft)
-  const scrollTop = useTimelineStore((s) => s.scrollTop)
   const setScroll = useTimelineStore((s) => s.setScroll)
   const pixelToTime = useTimelineStore((s) => s.pixelToTime)
   const zoomIn = useTimelineStore((s) => s.zoomIn)
   const zoomOut = useTimelineStore((s) => s.zoomOut)
   const resetZoom = useTimelineStore((s) => s.resetZoom)
   const snapEnabled = useTimelineStore((s) => s.snapEnabled)
-  const snapThreshold = useTimelineStore((s) => s.snapThreshold)
   const toggleSnap = useTimelineStore((s) => s.toggleSnap)
 
   // 同步滚动位置
@@ -66,7 +54,7 @@ function Timeline() {
     [zoomIn, zoomOut]
   )
 
-  // 点击时间轴空白区域取消选择
+  // 点击时间轴空白区域：取消选择
   const handleTracksAreaClick = useCallback(
     (e: React.MouseEvent) => {
       if ((e.target as HTMLElement).classList.contains('tracks-area-bg')) {
@@ -76,53 +64,37 @@ function Timeline() {
     [selectClip]
   )
 
-  // 标尺点击跳转
+  // 标尺点击跳转播放时间
+  // 注意：标尺在滚动容器内部，getBoundingClientRect() 已包含滚动偏移，
+  // 所以 e.clientX - rect.left 就是正确的时间轴像素坐标，无需再加 scrollLeft
   const handleRulerClick = useCallback(
-    (time: number) => {
-      setCurrentTime(time)
+    (e: React.MouseEvent) => {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const time = Math.max(0, pixelToTime(x))
+      useProjectStore.getState().setCurrentTime(time)
     },
-    [setCurrentTime]
+    [pixelToTime]
   )
 
-  // ====== 从素材库拖放到时间轴 ======
+  // ====== 从素材库拖放到时间轴（始终吸附到最前端 time=0）======
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
       e.dataTransfer.dropEffect = 'copy'
       setIsDragOver(true)
-
-      // 计算放置位置
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-      const x = e.clientX - rect.left + scrollContainerRef.current?.scrollLeft
-      const y = e.clientY - rect.top
-
-      // 确定目标轨道
-      const trackIndex = Math.floor(
-        (y - rulerHeight) / trackHeight
-      )
-      const targetTrack =
-        project.tracks[Math.max(0, Math.min(trackIndex, project.tracks.length - 1))]
-
-      if (targetTrack) {
-        setDropPosition({
-          trackId: targetTrack.id,
-          time: Math.max(0, pixelToTime(x)),
-        })
-      }
     },
-    [project.tracks, rulerHeight, trackHeight, pixelToTime]
+    []
   )
 
   const handleDragLeave = useCallback(() => {
     setIsDragOver(false)
-    setDropPosition(null)
   }, [])
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
       setIsDragOver(false)
-      setDropPosition(null)
 
       try {
         const data = e.dataTransfer.getData('application/cinestudio-material')
@@ -130,40 +102,24 @@ function Timeline() {
 
         const material: Material = JSON.parse(data)
 
-        // 确定目标轨道
-        let targetTrackId: string | undefined
-        if (dropPosition) {
-          targetTrackId = dropPosition.trackId
-        } else {
-          // 兜底：找匹配类型的第一个轨道
-          const matchingTrack = project.tracks.find(
+        // 找匹配类型的第一个轨道
+        const matchingTrack =
+          project.tracks.find(
             (t) =>
               (material.type === 'video' || material.type === 'image') &&
               t.type === 'video'
           ) ||
-            project.tracks.find(
-              (t) => material.type === 'audio' && t.type === 'audio'
-            ) ||
-            project.tracks[0]
-          targetTrackId = matchingTrack?.id
-        }
+          project.tracks.find(
+            (t) => material.type === 'audio' && t.type === 'audio'
+          ) ||
+          project.tracks[0]
 
-        if (!targetTrackId) return
+        if (!matchingTrack) return
 
-        // 计算放置时间：吸附逻辑
-        // 1. 如果目标轨道为空（无片段），自动吸附到 0s
-        // 2. 如果吸附开启且放置位置在阈值内接近 0s，吸附到 0s
-        const targetTrackData = project.tracks.find(t => t.id === targetTrackId)
-        const isTrackEmpty = !targetTrackData || targetTrackData.clips.length === 0
-        let placeTime = dropPosition?.time ?? 0
-
-        if (snapEnabled && (isTrackEmpty || placeTime <= pixelToTime(snapThreshold))) {
-          placeTime = 0
-        }
-
-        addClip(targetTrackId, {
+        // 始终吸附到最前端：time = 0
+        addClip(matchingTrack.id, {
           materialId: material.id,
-          startTime: placeTime,
+          startTime: 0,
           duration: material.duration,
           effects: [],
           volume: 100,
@@ -174,11 +130,11 @@ function Timeline() {
         /* JSON 解析失败则忽略 */
       }
     },
-    [project.tracks, dropPosition, addClip, pixelToTime, snapEnabled, snapThreshold]
+    [project.tracks, addClip]
   )
 
-  // 计算时间轴总宽度（至少显示60秒）
-  const totalDuration = Math.max(project.duration, 60)
+  // 时间轴总宽度：基于项目时长，至少显示 30 秒 + 缓冲
+  const totalDuration = Math.max(project.duration, 30) + 10
   const timelineWidth = totalDuration * pixelsPerSecond
 
   return (
@@ -313,71 +269,59 @@ function Timeline() {
         </div>
 
         {/* 右侧标尺+轨道区域（同步滚动） */}
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 relative overflow-auto"
-          onScroll={handleScroll}
-          onWheel={handleWheel}
-        >
+        <div className="flex-1 relative">
           <div
-            ref={tracksAreaRef}
-            className={`relative tracks-area-bg ${isDragOver ? 'drag-over-active' : ''}`}
-            onClick={handleTracksAreaClick}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            style={{ minWidth: timelineWidth, paddingTop: rulerHeight }}
+            ref={scrollContainerRef}
+            className="absolute inset-0 overflow-auto"
+            onScroll={handleScroll}
+            onWheel={handleWheel}
           >
-            {/* 时间标尺 */}
-            <TimelineRuler
-              width={timelineWidth}
-              height={rulerHeight}
-              pixelsPerSecond={pixelsPerSecond}
-              totalDuration={totalDuration}
-              scrollLeft={scrollLeft}
-              onClick={handleRulerClick}
-            />
-
-            {/* 轨道列表 */}
-            <div>
-              {project.tracks.map((track) => (
-                <TrackRow
-                  key={track.id}
-                  track={track}
-                  height={trackHeight}
-                  pixelsPerSecond={pixelsPerSecond}
-                  totalDuration={totalDuration}
-                />
-              ))}
-            </div>
-
-            {/* 效果轨道：聚合显示所有片段上的效果 */}
-            <EffectTrackRow
-              height={trackHeight * 0.6}
-              pixelsPerSecond={pixelsPerSecond}
-              totalDuration={totalDuration}
-            />
-
-            {/* 播放头 */}
-            <Playhead
-              currentTime={currentTime}
-              pixelsPerSecond={pixelsPerSecond}
-              totalTracks={project.tracks.length + 1} // +1 for effect track
-              trackHeight={trackHeight}
-              rulerHeight={rulerHeight}
-            />
-
-            {/* 拖放位置指示线 */}
-            {isDragOver && dropPosition && (
-              <div
-                className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-50"
-                style={{
-                  left: dropPosition.time * pixelsPerSecond,
-                  background: 'var(--accent-cyan)',
-                  boxShadow: '0 0 8px var(--accent-cyan)',
-                }}
+            <div
+              className={`relative tracks-area-bg ${isDragOver ? 'drag-over-active' : ''}`}
+              onClick={handleTracksAreaClick}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              style={{ minWidth: timelineWidth, paddingTop: rulerHeight }}
+            >
+              {/* 时间标尺 */}
+              <TimelineRuler
+                width={timelineWidth}
+                height={rulerHeight}
+                pixelsPerSecond={pixelsPerSecond}
+                totalDuration={totalDuration}
+                onClick={handleRulerClick}
               />
-            )}
+
+              {/* 轨道列表 */}
+              <div>
+                {project.tracks.map((track) => (
+                  <TrackRow
+                    key={track.id}
+                    track={track}
+                    height={trackHeight}
+                    pixelsPerSecond={pixelsPerSecond}
+                    totalDuration={totalDuration}
+                  />
+                ))}
+              </div>
+
+              {/* 效果轨道 */}
+              <EffectTrackRow
+                height={trackHeight * 0.6}
+                pixelsPerSecond={pixelsPerSecond}
+                totalDuration={totalDuration}
+              />
+
+              {/* 播放头（在滚动容器内，和标尺/片段同一坐标系） */}
+              <Playhead
+                currentTime={currentTime}
+                pixelsPerSecond={pixelsPerSecond}
+                totalTracks={project.tracks.length + 1}
+                trackHeight={trackHeight}
+                rulerHeight={rulerHeight}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -358,9 +358,8 @@ html, body, #root {
   position: absolute;
   top: 0;
   width: 1px;
-  background: #ef4444;
   z-index: 50;
-  pointer-events: none;
+  cursor: ew-resize;
 }
 
 .playhead-head {
@@ -375,14 +374,20 @@ html, body, #root {
   border-top: 8px solid #ef4444;
 }
 
-.playhandle-draggable {
-  pointer-events: auto;
-  cursor: ew-resize;
-}
-
-.playhandle-draggable .playhead-line {
-  width: 2px;
-  background: linear-gradient(to bottom, #ef4444, #dc2626);
+.playhead-time {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-family: monospace;
+  color: #ef4444;
+  background: var(--bg-card);
+  border: 1px solid #ef4444;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* ========== 对话框遮罩 ========== */
