@@ -4,6 +4,7 @@ import { applyTransition, getTransition } from '../effects/transitions';
 import { applyVisualEffect } from '../effects/visual';
 import { applyColorEffect } from '../effects/color';
 import { applyCreativeEffect } from '../effects/creative';
+import useProjectStore from '../store/useProjectStore';
 
 interface VideoSource {
   url: string;
@@ -121,13 +122,40 @@ export class VideoRenderer {
 
   /**
    * 播放所有视频的音频（配合 Canvas 逐帧渲染使用）
+   * 修复：仅播放已就绪的视频，未就绪的注册一次性监听器等待就绪后自动播放
    */
   playAudio(): void {
     this.resumeAudio();
-    for (const source of this.videoSources.values()) {
+    const state = useProjectStore?.getState?.();
+    const currentTime = state?.currentTime ?? 0;
+
+    for (const [url, source] of this.videoSources.entries()) {
       const video = source.element;
-      if (video.paused) {
+      if (source.ready && video.paused) {
+        // 已就绪：同步 currentTime 后播放
+        if (Math.abs(video.currentTime - currentTime) > 0.05) {
+          video.currentTime = Math.max(0, currentTime);
+        }
         video.play().catch(() => { /* 静默 */ });
+      } else if (!source.ready) {
+        // 未就绪：注册一次性 canplay 监听，就绪后自动播放
+        const onCanPlay = () => {
+          source.ready = true;
+          video.removeEventListener('canplay', onCanPlay);
+          video.removeEventListener('loadeddata', onCanPlay);
+          if (this.audioContext?.state === 'suspended') {
+            this.resumeAudio();
+          }
+          const currentState = useProjectStore?.getState?.();
+          if (currentState?.isPlaying) {
+            if (Math.abs(video.currentTime - (currentState.currentTime ?? 0)) > 0.05) {
+              video.currentTime = Math.max(0, currentState.currentTime ?? 0);
+            }
+            video.play().catch(() => { /* 静默 */ });
+          }
+        };
+        video.addEventListener('canplay', onCanPlay, { once: true });
+        video.addEventListener('loadeddata', onCanPlay, { once: true });
       }
     }
   }
