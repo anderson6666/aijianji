@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/aijianji/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能视频编辑器</title>
+    <script type="module" crossorigin src="/aijianji/assets/index-C3_oRaDV.js"></script>
+    <link rel="stylesheet" crossorigin href="/aijianji/assets/index-BO0OrFsB.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      (function() {
+        var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+          document.body.innerHTML = `
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { 
+                min-height: 100vh; 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                justify-content: center; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                color: white;
+                text-align: center;
+                padding: 20px;
+              }
+              .container {
+                max-width: 400px;
+              }
+              .icon {
+                font-size: 80px;
+                margin-bottom: 24px;
+              }
+              h1 {
+                font-size: 24px;
+                margin-bottom: 16px;
+                font-weight: 600;
+              }
+              p {
+                font-size: 16px;
+                line-height: 1.6;
+                opacity: 0.9;
+              }
+              .device-info {
+                margin-top: 32px;
+                padding: 16px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 12px;
+                font-size: 14px;
+                opacity: 0.7;
+              }
+            </style>
+            <div class="container">
+              <div class="icon">📱</div>
+              <h1>请在电脑浏览器中打开</h1>
+              <p>本应用仅支持桌面端浏览器使用，功能需要鼠标拖拽和精确的时间轴操作</p>
+              <p>而且部分页面手机浏览有严重BUG!</p>
+              <p>请使用电脑访问本页面以获得最佳体验。</p>
+              <div class="device-info">
+                检测到您正在使用移动设备访问
+              </div>
+            </div>
+          `;
+        }
+      })();
+    </script>
+  </body>
+</html>
