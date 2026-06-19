@@ -57,7 +57,7 @@ export class VideoRenderer {
   private static readonly VISUAL_EFFECTS = new Set([
     'splitScreen', 'pictureInPicture', 'mirrorFlip', 'rotate',
     'zoomPan', 'freezeFrame', 'chromaKey',
-    'maskCrop',
+    'maskCrop', 'slowMotion', 'fastMotion',
   ]);
 
   // 色彩光影效果（通过 color.ts 的 ColorEffectProcessor 处理）
@@ -508,9 +508,9 @@ export class VideoRenderer {
         break;
     }
 
-    // 如果有激活的图像效果（非转场），应用处理
+    // 如果有激活的图像效果（非转场），应用处理（传入速度因子使动画同步响应）
     if (imageEffects.length > 0) {
-      this.applyLayerEffects(imageEffects, relativeTime);
+      this.applyLayerEffects(imageEffects, relativeTime, speedFactor);
     }
 
     // 恢复到 save 时的状态（清除变换），用屏幕坐标绘制全屏闪光
@@ -735,8 +735,9 @@ export class VideoRenderer {
    * 按效果分类派发到对应的处理器（visual/color/creative/composer/音频/叙事）
    * @param effects 激活的效果列表
    * @param relativeTime 当前相对时间，用于计算动画进度
+   * @param speedFactor 速度因子，用于调整动画进度（加速/减速时画面特效同步响应）
    */
-  private applyLayerEffects(effects: AppliedEffect[], relativeTime: number): void {
+  private applyLayerEffects(effects: AppliedEffect[], relativeTime: number, speedFactor: number = 1.0): void {
     // ===== 关键修复：重置画布变换到单位矩阵 =====
     // renderLayer 在绘制图层时设置了 translate/rotate/scale 变换
     // 所有画面特效/色彩/创意处理器都假设 context 处于(0,0)无变换状态
@@ -766,9 +767,10 @@ export class VideoRenderer {
     for (const effect of effects) {
       try {
         // 计算动画进度（用于需要时间参数的效果）
+        // 速度因子影响动画时间流逝：加速时动画更快完成，减速时更慢
         let paramsWithProgress = { ...effect.params };
         if (ANIMATED_EFFECTS.has(effect.type) && effect.duration > 0) {
-          const progress = (relativeTime - effect.startTime) / effect.duration;
+          const progress = ((relativeTime - effect.startTime) * speedFactor) / effect.duration;
           paramsWithProgress = { ...effect.params, progress: Math.max(0, Math.min(1, progress)) };
         }
 
