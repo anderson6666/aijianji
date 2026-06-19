@@ -326,7 +326,7 @@ function Timeline() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            style={{ minWidth: timelineWidth }}
+            style={{ minWidth: timelineWidth, paddingTop: rulerHeight }}
           >
             {/* 时间标尺 */}
             <TimelineRuler
